@@ -4,3 +4,4 @@ testing.ipynb
 /dataset/generate_dataset/output
 /yolov5
 /out
+/wandb
