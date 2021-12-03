@@ -1,2 +1,6 @@
 /.idea
 testing.ipynb
+/dataset/src_data
+/dataset/generate_dataset/output
+/yolov5
+/out
