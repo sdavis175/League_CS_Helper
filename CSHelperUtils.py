@@ -1,8 +1,8 @@
-from configparser import ConfigParser
+import math
 from configparser import ConfigParser
 from ctypes import windll
+
 import pygame
-import math
 from pytesseract import pytesseract
 from win32api import RGB
 from win32con import HWND_TOPMOST, GWL_EXSTYLE, SWP_NOMOVE, SWP_NOSIZE, WS_EX_TRANSPARENT, LWA_COLORKEY, WS_EX_LAYERED
@@ -36,29 +36,35 @@ def read_numbers(screenshot, bbox):
 def load_config():
     """
     Loads config.ini and returns all the constructed objects from it
-    :return: Screen width, Screen height, bbox [x0, x1, y0, y1], rect [x0, y0, width, height]
+    :return: All config values in their respective data structures
     """
     config = ConfigParser()
     config.read(CONFIG_LOC)
-    vals = config["vals"]
-    screen_width = int(vals["screen_width"])
-    screen_height = int(vals["screen_height"])
-    fps_cap = int(vals["fps_cap"])
-    ad_x0 = float(vals["ad_x0"])
-    ad_y0 = float(vals["ad_y0"])
-    ad_w = float(vals["ad_w"])
-    ad_h = float(vals["ad_h"])
-    bbox = [int(ad_x0 * screen_width), int(ad_y0 * screen_height),
-            int(screen_width * (ad_w + ad_x0)), int(screen_height * (ad_h + ad_y0))]
-    rect = [int(ad_x0 * screen_width), int(ad_y0 * screen_height),
-            int(ad_w * screen_width), int(ad_h * screen_height)]
-    hp_lower = [int(vals["hp_lower_r"]), int(vals["hp_lower_g"]), int(vals["hp_lower_b"])]
-    hp_upper = [int(vals["hp_upper_r"]), int(vals["hp_upper_g"]), int(vals["hp_upper_b"])]
-    hp_bar_length = int(vals["hp_bar_length"])
-    minion_thresholds = [int(vals["melee_threshold"]), int(vals["caster_threshold"]), int(vals["cannon_threshold"])]
-    hp_search_padding = int(vals["hp_search_padding"])
-    return screen_width, screen_height, fps_cap, bbox, rect, hp_lower, hp_upper, hp_bar_length, minion_thresholds, \
-           hp_search_padding
+    settings = config["settings"]
+    regions = config["regions"]
+    hp_bar = config["hp_bar"]
+    screen_width = int(settings["screen_width"])
+    screen_height = int(settings["screen_height"])
+    fps_cap = int(settings["fps_cap"])
+    ad_x0 = float(regions["ad_x0"])
+    ad_y0 = float(regions["ad_y0"])
+    ad_w = float(regions["ad_w"])
+    ad_h = float(regions["ad_h"])
+    ui_0 = [int(regions["ui0_x0"]), int(regions["ui0_y0"]), int(regions["ui0_x1"]), int(regions["ui0_y1"])]
+    ui_1 = [int(regions["ui1_x0"]), int(regions["ui1_y0"]), int(regions["ui1_x1"]), int(regions["ui1_y1"])]
+    ui_list = [ui_0, ui_1]
+    ad_bbox = [int(ad_x0 * screen_width), int(ad_y0 * screen_height),
+               int(screen_width * (ad_w + ad_x0)), int(screen_height * (ad_h + ad_y0))]
+    ad_rect = [int(ad_x0 * screen_width), int(ad_y0 * screen_height),
+               int(ad_w * screen_width), int(ad_h * screen_height)]
+    hp_lower = [int(hp_bar["hp_lower_r"]), int(hp_bar["hp_lower_g"]), int(hp_bar["hp_lower_b"])]
+    hp_upper = [int(hp_bar["hp_upper_r"]), int(hp_bar["hp_upper_g"]), int(hp_bar["hp_upper_b"])]
+    hp_bar_length = int(hp_bar["hp_bar_length"])
+    minion_thresholds = [int(hp_bar["melee_threshold"]), int(hp_bar["caster_threshold"]),
+                         int(hp_bar["cannon_threshold"])]
+    hp_search_padding = int(hp_bar["hp_search_padding"])
+    return screen_width, screen_height, fps_cap, ui_list, ad_bbox, ad_rect, hp_lower, hp_upper, hp_bar_length, \
+           minion_thresholds, hp_search_padding
 
 
 def init_overlay(screen_width, screen_height):
@@ -125,6 +131,7 @@ def draw_rects(screen, rects, rect_color, thickness, rescale=True):
 
 def is_hp(pixel, hp_lower, hp_upper):
     """
+    Checks if a given pixel is within the color bounds of being an HP pixel
     :param pixel: [R, G, B] of the pixel
     :param hp_lower: From the config, [R, G, B] of the lower bounds for the HP pixel to check
     :param hp_upper: From the config, [R, G, B] of the upper bounds for the HP pixel to check
@@ -137,6 +144,7 @@ def is_hp(pixel, hp_lower, hp_upper):
 
 def below_threshold(minion_pos, frame_arr, hp_search_padding, hp_lower, hp_upper, hp_bar_length, minion_thresholds):
     """
+    Finds the minion's HP bar and checks if it is below it's threshold
     :param minion_pos: [x0, y0, w, h, label]
     :param frame_arr: Numpy array from the frame
     :param hp_search_padding: From the config, how large to make the search window from the minion's position
@@ -216,3 +224,21 @@ def below_threshold(minion_pos, frame_arr, hp_search_padding, hp_lower, hp_upper
     except Exception as e:
         print(e)
         return False
+
+
+def in_ui(minion_pos, ui_list):
+    """
+    Checks if the minion's position is inside one of the UI positions
+    :param minion_pos: [x0, y0, w, h] of minion
+    :param ui_list: From the config, list of [x0, y0, x1, y1] positions of the UI elements on the screen
+    :return: If the minion overlaps the UI or not
+    """
+    minion_x1 = minion_pos[0] + minion_pos[2]
+    minion_y1 = minion_pos[1] + minion_pos[3]
+    for ui_pos in ui_list:
+        # https://stackoverflow.com/questions/40795709/checking-whether-two-rectangles-overlap-in-python-using-two-bottom-left-corners
+        x_match = (ui_pos[0] < minion_pos[0] < ui_pos[2]) or (ui_pos[0] < minion_x1 < ui_pos[2])
+        y_match = (ui_pos[1] < minion_pos[1] < ui_pos[3]) or (ui_pos[1] < minion_y1 < ui_pos[3])
+        if x_match and y_match:
+            return True
+    return False

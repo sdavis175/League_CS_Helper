@@ -1,2 +1,3 @@
 Overlay Code: https://github.com/LtqxWYEG/PoopStuckToYourMouse
 Dataset Code/Ideas: https://github.com/Oleffa/LeagueAI
+Rectangle Overlap: https://stackoverflow.com/questions/40795709/checking-whether-two-rectangles-overlap-in-python-using-two-bottom-left-corners

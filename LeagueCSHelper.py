@@ -21,16 +21,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Load data and overlay
-    screen_width, screen_height, fps_cap, ad_bbox, ad_rect, \
+    print("Loading config...")
+    screen_width, screen_height, fps_cap, ui_list, ad_bbox, ad_rect, \
         hp_lower, hp_upper, hp_bar_length, minion_thresholds, hp_search_padding = load_config()
     screen, hwnd = init_overlay(screen_width, screen_height)
     fps_clock = pygame.time.Clock()
+    print("Loading model...")
     model = torch.hub.load('ultralytics/yolov5', 'custom', path="custom-weights/10kv2.pt")
     model.eval()
-
-    ad = 50
-    ad_check = 20
-    i = 0
 
     while True:
         t = time()
@@ -47,15 +45,14 @@ if __name__ == '__main__':
         # Run model on screenshot
         s = time()
         results = model(frame_arr)
-        # results.print()
         all_detected_objs = results.xyxy[0].cpu().numpy()
         minion_pos_list = []
         for detected_obj in all_detected_objs:
-            if detected_obj[4] > .6:
-                w = detected_obj[2] - detected_obj[0]
-                h = detected_obj[3] - detected_obj[1]
-                minion_pos_list.append([detected_obj[0], detected_obj[1], w, h, int(detected_obj[5])])
-        # print(found)
+            w = detected_obj[2] - detected_obj[0]
+            h = detected_obj[3] - detected_obj[1]
+            pos = [detected_obj[0], detected_obj[1], w, h, int(detected_obj[5])]
+            if detected_obj[4] > .6 and w > 50 and h > 50 and not in_ui(pos, ui_list):
+                minion_pos_list.append(pos)
         if args.print_times:
             print(f"Model took: {time() - s}")
 
@@ -72,21 +69,6 @@ if __name__ == '__main__':
             if args.print_times:
                 print(f"Determining thresholds took: {time() - s}")
 
-        # Check for AD
-        """
-        s = time()
-        if i == ad_check:
-            ad = read_numbers(frame, ad_bbox)
-            i = 0
-            if print_times:
-                print(f"AD took: {time() - s}")
-        else:
-            i += 1
-        if ad != -1:
-            # print(ad)
-            pass
-        """
-
         # Draw the rectangles
         s = time()
         draw_rects(screen, display_minions, (0, 255, 0), 1)
@@ -97,4 +79,3 @@ if __name__ == '__main__':
             print(f"Total time: {time() - t}")
             print("-"*30)
         fps_clock.tick(fps_cap)
-
