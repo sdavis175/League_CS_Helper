@@ -6,3 +6,4 @@ testing.ipynb
 /out
 /wandb
 /__pycache__
+/custom-weights
