@@ -14,8 +14,8 @@ output_dir = "../src_data/melee_raw_videos/exported"
 # area = (800, 400, 900, 600)
 # Greenscreen:
 x_off = 800
-y_off = 400
-area = (0+x_off,0+y_off,2560-x_off,1440-y_off)
+y_off = 300
+area = (0+x_off,0+y_off,1920-x_off,1080-y_off)
 # Background color in RGB
 # Teemo model viewer pink background
 # background = (95, 80, 170)

@@ -34,17 +34,17 @@ map_images_dir = "../src_data/map_screenshots"
 # -- test.txt
 output_dir = "output"
 # Prints a box around the placed object in red (for debug purposes)
-print_box = True
+print_box = False
 # Size of the datasets the program should generate
-dataset_size = 4500
+dataset_size = 10000
 # Beginning index for naming output files
-start_index = 5548
+start_index = 0
 # How many minons should be added minimum/maximum to each sample
 minions_min = 1
 minions_max = 10
 assert (minions_min <= minions_max), "Error, minions_max needs to be larger than minions_min!"
 # The scale factor of how much a champion image needs to be scaled to have a realistic size
-scale_minions = 0.9
+scale_minions = 1
 random_scale_minions = 0.25
 # Random rotation maximum offset in counter-/clockwise direction
 rotate = 10
@@ -68,7 +68,7 @@ cursor_scale = 0.40  # 0.45 seems good
 cursor_random = 0.2
 cursor_path = "../src_data/cursor"
 # Padding for the bias point (to keep the clustering of the minions from spawning minions outside of the image
-padding = 300  # 400 is good
+padding = 400
 ########### Helper functions ###################
 """
 This funciton applies random noise to the rgb values of a pixel (R,G,B)
@@ -240,15 +240,29 @@ for dataset in range(0, dataset_size):
     # Read in the current map background as image
     map_image = Image.open(mp_fnam)
     w, h = map_image.size
-    # Make sure the image is 1920x1080 (otherwise the overlay might not fit properly)
+    # Make sure the image is 2560x1440 (otherwise the overlay might not fit properly)
     assert (w == 2560 and h == 1440), "Error image has to be 2560x1440"
 
     map_image.save(output_dir + "/images/" + filename + ".jpg", "JPEG")
     cur_image_path = output_dir + "/images/" + filename + ".jpg"
-    # Iterate through all objects in the order we want them to be added and add them to the backgroundl
+    # Iterate through all objects in the order we want them to be added and add them to the background
     # Note this function also saves the image already
     # Point around which the objects will be clustered
     bias_point = (random.randint(padding, w - 1 - padding), random.randint(padding, h - 1 - padding))
+    gui_areas = [[2000, 700, 2560, 1440], [750, 1250, 1600, 1440]]
+    in_gui = True
+
+    while in_gui:
+        for gui_area in gui_areas:
+            if gui_area[0] < bias_point[0] < gui_area[2]:
+                in_gui = True
+            elif gui_area[1] < bias_point[1] < gui_area[3]:
+                in_gui = True
+            else:
+                in_gui = False
+        if in_gui:
+            bias_point = (random.randint(padding, w - 1 - padding), random.randint(padding, h - 1 - padding))
+
     for i in range(0, len(objects_to_add)):
         o = objects_to_add.pop()
         if len(objects_to_add) == 0:
